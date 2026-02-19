@@ -1,45 +1,72 @@
+require("dotenv").config();
+
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
 const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const path = require("path");
 const User = require("./models/User");
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-app.use(express.json());
-app.use(express.static("public"));
-
 /* ================= ENV ================= */
 
-const MONGO_URI = process.env.MONGO_URI;
-const JWT_SECRET = process.env.JWT_SECRET || "secret123";
+const MONGO_URI =
+  process.env.MONGO_URI ||
+  "mongodb+srv://mayank:mk74012@cluster0.tldqcng.mongodb.net/webrtcApp?retryWrites=true&w=majority";
+
+const JWT_SECRET =
+  process.env.JWT_SECRET || "super_secret_key";
 
 /* ================= DB CONNECT ================= */
 
-mongoose.connect(MONGO_URI)
-  .then(() => console.log("MongoDB Connected"))
-  .catch(err => console.log(err));
+mongoose
+  .connect(MONGO_URI)
+  .then(() => console.log("✅ MongoDB Connected"))
+  .catch((err) => {
+    console.error("❌ MongoDB Connection Error:", err.message);
+    process.exit(1);
+  });
 
-/* ================= REGISTER ================= */
+app.use(express.json());
+
+/* ================= ROUTES ================= */
+
+app.get("/receiver/:id", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "receiver.html"));
+});
+
+app.get("/call/:id", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
+app.use(express.static(path.join(__dirname, "public")));
+
+/* ================= AUTH ================= */
 
 app.post("/register", async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
+    const existingUser = await User.findOne({ email });
+    if (existingUser)
+      return res.status(400).json({ error: "User already exists" });
+
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const userId =
-      name.toLowerCase() + Math.floor(Math.random() * 10000);
+      name.toLowerCase().replace(/\s+/g, "") +
+      Math.floor(Math.random() * 10000);
 
     const user = new User({
       name,
       email,
       password: hashedPassword,
-      userId
+      userId,
     });
 
     await user.save();
@@ -47,42 +74,39 @@ app.post("/register", async (req, res) => {
     res.json({ message: "Registered Successfully" });
 
   } catch (err) {
+    console.error(err);
     res.status(400).json({ error: "Registration failed" });
   }
 });
 
-/* ================= LOGIN ================= */
-
 app.post("/login", async (req, res) => {
-  const { email, password } = req.body;
+  try {
+    const { email, password } = req.body;
 
-  const user = await User.findOne({ email });
-  if (!user) return res.status(400).json({ error: "User not found" });
+    const user = await User.findOne({ email });
+    if (!user)
+      return res.status(400).json({ error: "User not found" });
 
-  const valid = await bcrypt.compare(password, user.password);
-  if (!valid) return res.status(400).json({ error: "Wrong password" });
+    const valid = await bcrypt.compare(password, user.password);
+    if (!valid)
+      return res.status(400).json({ error: "Wrong password" });
 
-  const token = jwt.sign(
-    { userId: user.userId },
-    JWT_SECRET,
-    { expiresIn: "1d" }
-  );
+    const token = jwt.sign(
+      { userId: user.userId },
+      JWT_SECRET,
+      { expiresIn: "1d" }
+    );
 
-  res.json({
-    token,
-    receiverLink: `/receiver/${user.userId}`,
-    callLink: `/call/${user.userId}`
-  });
-});
+    res.json({
+      token,
+      receiverLink: `/receiver/${user.userId}`,
+      callLink: `/call/${user.userId}`,
+    });
 
-/* ================= ROUTES ================= */
-
-app.get("/receiver/:id", (req, res) => {
-  res.sendFile(__dirname + "/public/receiver.html");
-});
-
-app.get("/call/:id", (req, res) => {
-  res.sendFile(__dirname + "/public/index.html");
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Login failed" });
+  }
 });
 
 /* ================= SOCKET ================= */
@@ -91,37 +115,67 @@ let onlineUsers = {};
 
 io.on("connection", (socket) => {
 
-  socket.on("receiver-join", async ({ userId, token }) => {
-    try {
-      const decoded = jwt.verify(token, JWT_SECRET);
+  console.log("🟢 New socket connected:", socket.id);
 
-      if (decoded.userId !== userId) return;
+  /* ===== Receiver Join ===== */
+
+  socket.on("receiver-join", ({ userId, token }) => {
+
+    try {
+
+      // If token present → verify
+      if (token) {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        if (decoded.userId !== userId) {
+          console.log("❌ Token mismatch");
+          return;
+        }
+      }
 
       onlineUsers[userId] = socket.id;
       socket.userId = userId;
 
-      console.log("Receiver online:", userId);
+      console.log("📞 Receiver ONLINE:", userId);
 
     } catch (err) {
-      console.log("Invalid token attempt");
+      console.log("❌ Invalid token");
     }
+
   });
+
+  /* ===== Call User ===== */
 
   socket.on("call-user", ({ to }) => {
+
+    console.log("📡 Caller trying to call:", to);
+
     if (onlineUsers[to]) {
+
+      console.log("✅ Receiver found. Sending incoming-call.");
+
       io.to(onlineUsers[to]).emit("incoming-call", {
-        callerSocketId: socket.id
+        callerSocketId: socket.id,
       });
+
     } else {
+
+      console.log("❌ Receiver offline");
       socket.emit("receiver-offline");
+
     }
+
   });
 
-  socket.on("accept-call", ({ callerSocketId }) => {
-    io.to(callerSocketId).emit("call-accepted", {
-      receiverSocketId: socket.id
-    });
+ socket.on("accept-call", ({ callerSocketId }) => {
+
+  console.log("📥 accept-call received from receiver");
+
+  io.to(callerSocketId).emit("call-accepted", {
+    receiverSocketId: socket.id,
   });
+
+});
+
 
   socket.on("reject-call", ({ callerSocketId }) => {
     io.to(callerSocketId).emit("call-rejected");
@@ -140,10 +194,14 @@ io.on("connection", (socket) => {
   });
 
   socket.on("disconnect", () => {
+
     if (socket.userId) {
       delete onlineUsers[socket.userId];
+      console.log("🔴 Receiver OFFLINE:", socket.userId);
     }
+
   });
+
 });
 
 /* ================= START ================= */
@@ -151,5 +209,5 @@ io.on("connection", (socket) => {
 const PORT = process.env.PORT || 3000;
 
 server.listen(PORT, () => {
-  console.log("Server running on port " + PORT);
+  console.log("🚀 Server running on port " + PORT);
 });

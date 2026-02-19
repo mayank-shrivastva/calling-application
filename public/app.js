@@ -1,5 +1,7 @@
 const socket = io();
 
+console.log("=== APP JS LOADED ===");
+
 const localVideo = document.getElementById("localVideo");
 const remoteVideo = document.getElementById("remoteVideo");
 
@@ -7,10 +9,7 @@ let pc;
 let localStream;
 let otherSocketId;
 
-let isMuted = false;
-let currentFacingMode = "user";
-
-/* ================= SAFE URL DETECT ================= */
+/* ================= URL DETECT ================= */
 
 const currentPath = window.location.pathname.replace(/\/$/, "");
 const parts = currentPath.split("/");
@@ -18,6 +17,10 @@ const userIdFromURL = parts[parts.length - 1];
 
 const isReceiverPage = currentPath.startsWith("/receiver/");
 const isCallerPage = currentPath.startsWith("/call/");
+
+console.log("Caller:", isCallerPage);
+console.log("Receiver:", isReceiverPage);
+console.log("UserID:", userIdFromURL);
 
 /* ================= ICE ================= */
 
@@ -27,20 +30,46 @@ const iceConfig = {
   ]
 };
 
+/* ================= SOCKET CONNECT ================= */
+
+socket.on("connect", () => {
+
+  console.log("🟢 Socket Connected:", socket.id);
+
+  if (isReceiverPage && userIdFromURL) {
+
+    console.log("📞 Joining as receiver");
+
+    socket.emit("receiver-join", {
+      userId: userIdFromURL,
+      token: null
+    });
+
+  }
+
+});
+
 /* ================= MEDIA ================= */
 
 async function initMedia() {
+
+  console.log("initMedia()");
+
   localStream = await navigator.mediaDevices.getUserMedia({
-    video: { facingMode: currentFacingMode },
+    video: true,
     audio: true
   });
 
-  localVideo.srcObject = localStream;
+  if (localVideo) {
+    localVideo.srcObject = localStream;
+  }
+
 }
 
 /* ================= PEER ================= */
 
 function createPeer() {
+
   pc = new RTCPeerConnection(iceConfig);
 
   localStream.getTracks().forEach(track => {
@@ -48,7 +77,10 @@ function createPeer() {
   });
 
   pc.ontrack = (event) => {
-    remoteVideo.srcObject = event.streams[0];
+    console.log("Remote stream received");
+    if (remoteVideo) {
+      remoteVideo.srcObject = event.streams[0];
+    }
   };
 
   pc.onicecandidate = (event) => {
@@ -59,30 +91,14 @@ function createPeer() {
       });
     }
   };
+
 }
 
-/* ================= RECEIVER JOIN ================= */
-
-if (isReceiverPage && userIdFromURL) {
-
-  const token = localStorage.getItem("token");
-
-  if (!token) {
-    alert("Login required");
-    window.location.href = "/login.html";
-  } else {
-    socket.emit("receiver-join", {
-      userId: userIdFromURL,
-      token: token
-    });
-
-    updateStatus("Waiting for call...");
-  }
-}
-
-/* ================= CALLER ================= */
+/* ================= START CALL ================= */
 
 async function startCall() {
+
+  console.log("Start call");
 
   if (!isCallerPage || !userIdFromURL) return;
 
@@ -92,45 +108,60 @@ async function startCall() {
     to: userIdFromURL
   });
 
-  updateStatus("Calling...");
+}
+
+/* ================= CALL BUTTON TRIGGER ================= */
+
+if (isCallerPage) {
+
+  document.body.addEventListener("click", function once() {
+
+    startCall();
+    document.body.removeEventListener("click", once);
+
+  });
+
 }
 
 /* ================= INCOMING ================= */
 
 socket.on("incoming-call", ({ callerSocketId }) => {
 
+  console.log("📲 Incoming call");
+
   otherSocketId = callerSocketId;
 
-  showButtons("accept", "reject");
-  updateStatus("Incoming call...");
+  const acceptBtn = document.getElementById("acceptBtn");
+  const rejectBtn = document.getElementById("rejectBtn");
+
+  if (acceptBtn) acceptBtn.style.display = "inline-block";
+  if (rejectBtn) rejectBtn.style.display = "inline-block";
+
 });
 
 /* ================= ACCEPT ================= */
 
-function acceptCall() {
+async function acceptCall() {
 
-  hideButtons("accept", "reject");
-  updateStatus("Connecting...");
+  console.log("Accepted");
+
+  const acceptBtn = document.getElementById("acceptBtn");
+  const rejectBtn = document.getElementById("rejectBtn");
+
+  if (acceptBtn) acceptBtn.style.display = "none";
+  if (rejectBtn) rejectBtn.style.display = "none";
 
   socket.emit("accept-call", {
     callerSocketId: otherSocketId
   });
+
 }
 
-/* ================= REJECT ================= */
-
-function rejectCall() {
-
-  socket.emit("reject-call", {
-    callerSocketId: otherSocketId
-  });
-
-  resetUI();
-}
-
-/* ================= CONNECTION FLOW ================= */
+/* ================= CALL ACCEPTED ================= */
 
 socket.on("call-accepted", async ({ receiverSocketId }) => {
+
+  console.log("Call accepted event");
 
   otherSocketId = receiverSocketId;
 
@@ -145,11 +176,13 @@ socket.on("call-accepted", async ({ receiverSocketId }) => {
     offer
   });
 
-  updateStatus("Connected");
-  showButtons("end", "mute", "switch");
 });
 
+/* ================= OFFER RECEIVED ================= */
+
 socket.on("offer", async ({ offer, from }) => {
+
+  console.log("Offer received");
 
   otherSocketId = from;
 
@@ -166,115 +199,38 @@ socket.on("offer", async ({ offer, from }) => {
     answer
   });
 
-  updateStatus("Connected");
-  showButtons("end", "mute", "switch");
 });
 
+/* ================= ANSWER RECEIVED ================= */
+
 socket.on("answer", async ({ answer }) => {
+
+  console.log("Answer received");
+
   if (pc) {
     await pc.setRemoteDescription(new RTCSessionDescription(answer));
   }
+
 });
 
+/* ================= ICE RECEIVED ================= */
+
 socket.on("ice-candidate", async ({ candidate }) => {
+
   if (pc) {
     await pc.addIceCandidate(new RTCIceCandidate(candidate));
   }
+
 });
 
-/* ================= OFFLINE ================= */
+/* ================= REJECT ================= */
 
-socket.on("receiver-offline", () => {
-  updateStatus("Receiver Offline");
-});
+function rejectCall() {
 
-/* ================= MUTE ================= */
+  console.log("Rejected");
 
-function toggleMute() {
-
-  if (!localStream) return;
-
-  localStream.getAudioTracks().forEach(track => {
-    track.enabled = isMuted;
+  socket.emit("reject-call", {
+    callerSocketId: otherSocketId
   });
 
-  isMuted = !isMuted;
-
-  const muteBtn = document.getElementById("muteBtn");
-  if (muteBtn) {
-    muteBtn.innerText = isMuted ? "🔇" : "🎤";
-  }
-}
-
-/* ================= END ================= */
-
-function endCall() {
-
-  if (pc) {
-    pc.close();
-    pc = null;
-  }
-
-  if (localStream) {
-    localStream.getTracks().forEach(track => track.stop());
-    localStream = null;
-  }
-
-  remoteVideo.srcObject = null;
-  localVideo.srcObject = null;
-
-  resetUI();
-}
-
-/* ================= SWITCH CAMERA ================= */
-
-async function switchCamera() {
-
-  if (!localStream) return;
-
-  currentFacingMode =
-    currentFacingMode === "user" ? "environment" : "user";
-
-  localStream.getTracks().forEach(track => track.stop());
-
-  localStream = await navigator.mediaDevices.getUserMedia({
-    video: { facingMode: currentFacingMode },
-    audio: true
-  });
-
-  localVideo.srcObject = localStream;
-
-  if (pc) {
-    const sender = pc.getSenders().find(s => s.track.kind === "video");
-    if (sender) {
-      sender.replaceTrack(localStream.getVideoTracks()[0]);
-    }
-  }
-}
-
-/* ================= UI HELPERS ================= */
-
-function updateStatus(text) {
-  const callStatus = document.getElementById("callStatus");
-  if (callStatus) callStatus.innerText = text;
-}
-
-function showButtons(...buttons) {
-  buttons.forEach(btn => {
-    const el = document.getElementById(btn + "Btn");
-    if (el) el.style.display = "inline-block";
-  });
-}
-
-function hideButtons(...buttons) {
-  buttons.forEach(btn => {
-    const el = document.getElementById(btn + "Btn");
-    if (el) el.style.display = "none";
-  });
-}
-
-function resetUI() {
-  hideButtons("accept", "reject", "end", "mute", "switch");
-  updateStatus("Waiting...");
-  isMuted = false;
 }
