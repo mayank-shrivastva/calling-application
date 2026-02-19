@@ -22,7 +22,7 @@ console.log("Caller:", isCallerPage);
 console.log("Receiver:", isReceiverPage);
 console.log("UserID:", userIdFromURL);
 
-/* ================= ICE (STUN + TURN) ================= */
+/* ================= ICE ================= */
 
 const iceConfig = {
   iceServers: [
@@ -42,14 +42,10 @@ socket.on("connect", () => {
   console.log("🟢 Socket Connected:", socket.id);
 
   if (isReceiverPage && userIdFromURL) {
-
-    console.log("📞 Joining as receiver");
-
     socket.emit("receiver-join", {
       userId: userIdFromURL,
       token: null
     });
-
   }
 
 });
@@ -73,6 +69,8 @@ async function initMedia() {
 
     if (localVideo) {
       localVideo.srcObject = localStream;
+      localVideo.muted = true;   // IMPORTANT for autoplay
+      await localVideo.play().catch(()=>{});
     }
 
   } catch (err) {
@@ -95,19 +93,20 @@ function createPeer() {
     pc.addTrack(track, localStream);
   });
 
-  pc.ontrack = (event) => {
+  pc.ontrack = async (event) => {
 
     console.log("🎥 Remote stream received");
 
     if (remoteVideo) {
       remoteVideo.srcObject = event.streams[0];
+      await remoteVideo.play().catch(()=>{});
     }
 
   };
 
   pc.onicecandidate = (event) => {
 
-    if (event.candidate) {
+    if (event.candidate && otherSocketId) {
       socket.emit("ice-candidate", {
         to: otherSocketId,
         candidate: event.candidate
@@ -128,9 +127,9 @@ async function startCall() {
 
   if (!isCallerPage || !userIdFromURL) return;
 
-  await initMedia();
+  console.log("📡 Auto calling:", userIdFromURL);
 
-  console.log("📡 Calling:", userIdFromURL);
+  await initMedia();
 
   socket.emit("call-user", {
     to: userIdFromURL
@@ -138,17 +137,12 @@ async function startCall() {
 
 }
 
-/* ================= CALL BUTTON TRIGGER ================= */
+/* ================= AUTO START ON PAGE LOAD ================= */
 
 if (isCallerPage) {
-
-  document.body.addEventListener("click", function once() {
-
-    startCall();
-    document.body.removeEventListener("click", once);
-
+  window.addEventListener("load", async () => {
+    await startCall();
   });
-
 }
 
 /* ================= INCOMING ================= */
@@ -245,7 +239,7 @@ socket.on("answer", async ({ answer }) => {
 
 socket.on("ice-candidate", async ({ candidate }) => {
 
-  if (pc) {
+  if (pc && candidate) {
     try {
       await pc.addIceCandidate(new RTCIceCandidate(candidate));
     } catch (err) {
