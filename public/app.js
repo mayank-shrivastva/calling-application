@@ -5,9 +5,9 @@ console.log("=== APP JS LOADED ===");
 const localVideo = document.getElementById("localVideo");
 const remoteVideo = document.getElementById("remoteVideo");
 
-let pc;
-let localStream;
-let otherSocketId;
+let pc = null;
+let localStream = null;
+let otherSocketId = null;
 
 /* ================= URL DETECT ================= */
 
@@ -22,11 +22,16 @@ console.log("Caller:", isCallerPage);
 console.log("Receiver:", isReceiverPage);
 console.log("UserID:", userIdFromURL);
 
-/* ================= ICE ================= */
+/* ================= ICE (STUN + TURN) ================= */
 
 const iceConfig = {
   iceServers: [
-    { urls: "stun:stun.l.google.com:19302" }
+    { urls: "stun:stun.l.google.com:19302" },
+    {
+      urls: "turn:openrelay.metered.ca:80",
+      username: "openrelayproject",
+      credential: "openrelayproject"
+    }
   ]
 };
 
@@ -53,15 +58,25 @@ socket.on("connect", () => {
 
 async function initMedia() {
 
-  console.log("initMedia()");
+  if (localStream) return;
 
-  localStream = await navigator.mediaDevices.getUserMedia({
-    video: true,
-    audio: true
-  });
+  try {
 
-  if (localVideo) {
-    localVideo.srcObject = localStream;
+    console.log("Requesting camera...");
+
+    localStream = await navigator.mediaDevices.getUserMedia({
+      video: true,
+      audio: true
+    });
+
+    console.log("Camera granted");
+
+    if (localVideo) {
+      localVideo.srcObject = localStream;
+    }
+
+  } catch (err) {
+    console.error("Camera error:", err);
   }
 
 }
@@ -70,26 +85,39 @@ async function initMedia() {
 
 function createPeer() {
 
+  if (pc) return;
+
   pc = new RTCPeerConnection(iceConfig);
+
+  console.log("Peer created");
 
   localStream.getTracks().forEach(track => {
     pc.addTrack(track, localStream);
   });
 
   pc.ontrack = (event) => {
-    console.log("Remote stream received");
+
+    console.log("🎥 Remote stream received");
+
     if (remoteVideo) {
       remoteVideo.srcObject = event.streams[0];
     }
+
   };
 
   pc.onicecandidate = (event) => {
+
     if (event.candidate) {
       socket.emit("ice-candidate", {
         to: otherSocketId,
         candidate: event.candidate
       });
     }
+
+  };
+
+  pc.oniceconnectionstatechange = () => {
+    console.log("ICE State:", pc.iceConnectionState);
   };
 
 }
@@ -98,11 +126,11 @@ function createPeer() {
 
 async function startCall() {
 
-  console.log("Start call");
-
   if (!isCallerPage || !userIdFromURL) return;
 
   await initMedia();
+
+  console.log("📡 Calling:", userIdFromURL);
 
   socket.emit("call-user", {
     to: userIdFromURL
@@ -143,7 +171,7 @@ socket.on("incoming-call", ({ callerSocketId }) => {
 
 async function acceptCall() {
 
-  console.log("Accepted");
+  console.log("Call accepted");
 
   const acceptBtn = document.getElementById("acceptBtn");
   const rejectBtn = document.getElementById("rejectBtn");
@@ -218,7 +246,11 @@ socket.on("answer", async ({ answer }) => {
 socket.on("ice-candidate", async ({ candidate }) => {
 
   if (pc) {
-    await pc.addIceCandidate(new RTCIceCandidate(candidate));
+    try {
+      await pc.addIceCandidate(new RTCIceCandidate(candidate));
+    } catch (err) {
+      console.error("ICE error:", err);
+    }
   }
 
 });
@@ -227,7 +259,7 @@ socket.on("ice-candidate", async ({ candidate }) => {
 
 function rejectCall() {
 
-  console.log("Rejected");
+  console.log("Call rejected");
 
   socket.emit("reject-call", {
     callerSocketId: otherSocketId

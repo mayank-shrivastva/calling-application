@@ -17,7 +17,7 @@ const io = new Server(server);
 
 const MONGO_URI =
   process.env.MONGO_URI ||
-  "mongodb+srv://mayank:mk74012@cluster0.tldqcng.mongodb.net/webrtcApp?retryWrites=true&w=majority";
+  "";
 
 const JWT_SECRET =
   process.env.JWT_SECRET || "super_secret_key";
