@@ -10,13 +10,14 @@ let otherSocketId;
 let isMuted = false;
 let currentFacingMode = "user";
 
-/* ================= URL INFO ================= */
+/* ================= SAFE URL DETECT ================= */
 
-const pathParts = window.location.pathname.split("/");
-const userIdFromURL = pathParts[2];
+const currentPath = window.location.pathname.replace(/\/$/, "");
+const parts = currentPath.split("/");
+const userIdFromURL = parts[parts.length - 1];
 
-const isReceiverPage = window.location.pathname.includes("/receiver/");
-const isCallerPage = window.location.pathname.includes("/call/");
+const isReceiverPage = currentPath.startsWith("/receiver/");
+const isCallerPage = currentPath.startsWith("/call/");
 
 /* ================= ICE ================= */
 
@@ -60,26 +61,29 @@ function createPeer() {
   };
 }
 
-/* ================= SECURE RECEIVER JOIN ================= */
+/* ================= RECEIVER JOIN ================= */
 
 if (isReceiverPage && userIdFromURL) {
 
   const token = localStorage.getItem("token");
 
   if (!token) {
-    alert("Login required.");
+    alert("Login required");
     window.location.href = "/login.html";
   } else {
     socket.emit("receiver-join", {
       userId: userIdFromURL,
       token: token
     });
+
+    updateStatus("Waiting for call...");
   }
 }
 
 /* ================= CALLER ================= */
 
 async function startCall() {
+
   if (!isCallerPage || !userIdFromURL) return;
 
   await initMedia();
@@ -94,6 +98,7 @@ async function startCall() {
 /* ================= INCOMING ================= */
 
 socket.on("incoming-call", ({ callerSocketId }) => {
+
   otherSocketId = callerSocketId;
 
   showButtons("accept", "reject");
@@ -115,6 +120,7 @@ function acceptCall() {
 /* ================= REJECT ================= */
 
 function rejectCall() {
+
   socket.emit("reject-call", {
     callerSocketId: otherSocketId
   });
@@ -185,6 +191,7 @@ socket.on("receiver-offline", () => {
 /* ================= MUTE ================= */
 
 function toggleMute() {
+
   if (!localStream) return;
 
   localStream.getAudioTracks().forEach(track => {
