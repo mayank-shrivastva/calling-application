@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Register</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+</head>
+
+<body style="margin:0; font-family:Arial; background:#111; color:white; display:flex; justify-content:center; align-items:center; height:100vh;">
+
+<div style="width:320px; background:#222; padding:25px; border-radius:10px;">
+
+  <h2 style="text-align:center;">Register</h2>
+
+  <input id="name" placeholder="Name"
+    style="width:100%; padding:10px; margin-top:10px; border:none; border-radius:6px;" />
+
+  <input id="email" placeholder="Email"
+    style="width:100%; padding:10px; margin-top:10px; border:none; border-radius:6px;" />
+
+  <input id="password" type="password" placeholder="Password"
+    style="width:100%; padding:10px; margin-top:10px; border:none; border-radius:6px;" />
+
+  <button onclick="register()"
+    style="width:100%; padding:10px; margin-top:15px; background:#1db954; border:none; border-radius:6px; color:white;">
+    Register
+  </button>
+
+  <p style="text-align:center; margin-top:10px;">
+    Already have account?
+    <a href="/login.html" style="color:#1db954;">Login</a>
+  </p>
+
+</div>
+
+<script>
+async function register() {
+
+  const name = document.getElementById("name").value;
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+
+  const res = await fetch("/register", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, email, password })
+  });
+
+  const data = await res.json();
+
+  if (data.error) {
+    alert(data.error);
+  } else {
+    alert("Registered Successfully");
+    window.location.href = "/login.html";
+  }
+}
+</script>
+
+</body>
+</html>

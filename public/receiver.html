@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Receiver</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+</head>
+
+<body style="margin:0; padding:0; background:#000; font-family:-apple-system,BlinkMacSystemFont,sans-serif; overflow:hidden;">
+
+<div style="position:relative; width:100vw; height:100vh; background:#000;">
+
+  <!-- Remote Video -->
+  <video id="remoteVideo"
+    autoplay
+    playsinline
+    style="
+      position:absolute;
+      width:100%;
+      height:100%;
+      object-fit:cover;
+      background:#000;">
+  </video>
+
+  <!-- Top Info Bar -->
+  <div style="
+      position:absolute;
+      top:0;
+      width:100%;
+      padding:20px;
+      color:#fff;
+      background:linear-gradient(to bottom, rgba(0,0,0,0.85), transparent);
+      display:flex;
+      align-items:center;
+      gap:12px;">
+
+      <div style="
+          width:45px;
+          height:45px;
+          border-radius:50%;
+          background:#333;
+          display:flex;
+          align-items:center;
+          justify-content:center;
+          font-weight:bold;
+          font-size:18px;">
+          C
+      </div>
+
+      <div>
+          <div style="font-size:16px; font-weight:500;">Caller</div>
+          <div id="callStatus" style="font-size:13px; opacity:0.7;">
+            Waiting...
+          </div>
+      </div>
+  </div>
+
+  <!-- Local Video Preview -->
+  <video id="localVideo"
+    autoplay
+    muted
+    playsinline
+    style="
+      position:absolute;
+      bottom:120px;
+      right:20px;
+      width:120px;
+      height:170px;
+      border-radius:16px;
+      object-fit:cover;
+      border:2px solid rgba(255,255,255,0.4);
+      background:#111;">
+  </video>
+
+  <!-- Bottom Controls -->
+  <div style="
+      position:absolute;
+      bottom:40px;
+      width:100%;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      gap:25px;">
+
+      <!-- Reject -->
+      <button id="rejectBtn"
+        onclick="rejectCall()"
+        style="
+          width:75px;
+          height:75px;
+          border-radius:50%;
+          border:none;
+          font-size:24px;
+          background:#e53935;
+          color:white;
+          cursor:pointer;
+          display:none;">
+          ✖
+      </button>
+
+      <!-- Accept -->
+      <button id="acceptBtn"
+        onclick="acceptCall()"
+        style="
+          width:75px;
+          height:75px;
+          border-radius:50%;
+          border:none;
+          font-size:24px;
+          background:#1db954;
+          color:white;
+          cursor:pointer;
+          display:none;">
+          📞
+      </button>
+
+      <!-- Mute -->
+      <button id="muteBtn"
+        onclick="toggleMute()"
+        style="
+          width:60px;
+          height:60px;
+          border-radius:50%;
+          border:none;
+          font-size:18px;
+          background:#444;
+          color:white;
+          cursor:pointer;
+          display:none;">
+          🎤
+      </button>
+
+      <!-- Switch Camera -->
+      <button id="switchBtn"
+        onclick="switchCamera()"
+        style="
+          width:60px;
+          height:60px;
+          border-radius:50%;
+          border:none;
+          font-size:18px;
+          background:#444;
+          color:white;
+          cursor:pointer;
+          display:none;">
+          🔄
+      </button>
+
+      <!-- End -->
+      <button id="endBtn"
+        onclick="endCall()"
+        style="
+          width:75px;
+          height:75px;
+          border-radius:50%;
+          border:none;
+          font-size:24px;
+          background:#e53935;
+          color:white;
+          cursor:pointer;
+          display:none;">
+          ✖
+      </button>
+
+  </div>
+
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="app.js"></script>
+
+</body>
+</html>

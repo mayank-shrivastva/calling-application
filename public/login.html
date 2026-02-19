@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Login</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+</head>
+
+<body style="margin:0; font-family:Arial; background:#111; color:white; display:flex; justify-content:center; align-items:center; height:100vh;">
+
+<div style="width:320px; background:#222; padding:25px; border-radius:10px;">
+
+  <h2 style="text-align:center;">Login</h2>
+
+  <input id="email" placeholder="Email"
+    style="width:100%; padding:10px; margin-top:10px; border:none; border-radius:6px;" />
+
+  <input id="password" type="password" placeholder="Password"
+    style="width:100%; padding:10px; margin-top:10px; border:none; border-radius:6px;" />
+
+  <button onclick="login()"
+    style="width:100%; padding:10px; margin-top:15px; background:#1db954; border:none; border-radius:6px; color:white;">
+    Login
+  </button>
+
+  <p style="text-align:center; margin-top:10px;">
+    No account?
+    <a href="/register.html" style="color:#1db954;">Register</a>
+  </p>
+
+</div>
+
+<script>
+async function login() {
+
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+
+  const res = await fetch("/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password })
+  });
+
+  const data = await res.json();
+
+  if (data.error) {
+    alert(data.error);
+  } else {
+    localStorage.setItem("token", data.token);
+
+    alert("Login Success");
+
+    window.location.href = data.receiverLink;
+  }
+}
+</script>
+
+</body>
+</html>
