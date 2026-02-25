@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Receiver Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <h2 class="logo">CallApp</h2>
+
+    <ul class="menu">
+      <li class="active">Dashboard</li>
+      <li>Call History</li>
+      <li>Profile</li>
+      <li>Logout</li>
+    </ul>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <h1>Receiver Panel</h1>
+      <div class="user-box">
+        <span class="status-dot"></span>
+        Online
+      </div>
+    </div>
+
+    <!-- Hero Waiting Section -->
+    <div class="hero waiting-hero">
+      <div class="hero-content">
+        <h2>Waiting For Incoming Call...</h2>
+        <p>Your system is ready to receive calls.</p>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats">
+      <div class="stat-card">
+        <h3>18</h3>
+        <p>Total Received Calls</p>
+      </div>
+      <div class="stat-card">
+        <h3>2</h3>
+        <p>Missed Calls</p>
+      </div>
+      <div class="stat-card">
+        <h3>2h 05m</h3>
+        <p>Total Talk Time</p>
+      </div>
+    </div>
+
+    <!-- Recent Calls -->
+    <div class="recent">
+      <h2>Recent Calls</h2>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Caller</th>
+            <th>Status</th>
+            <th>Duration</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Unknown User</td>
+            <td class="success">Completed</td>
+            <td>12m</td>
+            <td>Today</td>
+          </tr>
+          <tr>
+            <td>Guest Caller</td>
+            <td class="danger">Missed</td>
+            <td>-</td>
+            <td>Yesterday</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </main>
+
+</div>
+
+<!-- Incoming Call Modal -->
+<div id="incomingAlert" class="call-alert">
+  <div class="call-alert-box">
+    <div class="alert-header">
+      <span class="ring-dot"></span>
+      <strong>Incoming Call</strong>
+    </div>
+    <p id="callerName">Someone is calling...</p>
+
+    <div class="alert-actions">
+      <button class="accept-btn" onclick="acceptCall()">Accept</button>
+      <button class="reject-btn" onclick="rejectCall()">Reject</button>
+    </div>
+  </div>
+</div>
+</div>
+<script>
+  let callReminderInterval = null;
+
+function showIncomingCall(name = "Unknown Caller") {
+  document.getElementById("callerName").innerText =
+    name + " is calling...";
+
+  const alertBox = document.getElementById("incomingAlert");
+  alertBox.style.display = "block";
+
+  // Reminder animation every 3 seconds
+  callReminderInterval = setInterval(() => {
+    alertBox.style.animation = "none";
+    void alertBox.offsetWidth; // restart animation
+    alertBox.style.animation = "slideIn 0.4s ease";
+  }, 3000);
+}
+
+function acceptCall() {
+  stopCallAlert();
+}
+
+function rejectCall() {
+  stopCallAlert();
+}
+
+function stopCallAlert() {
+  document.getElementById("incomingAlert").style.display = "none";
+
+  if (callReminderInterval) {
+    clearInterval(callReminderInterval);
+    callReminderInterval = null;
+  }
+}
+</script>
+</body>
+</html>

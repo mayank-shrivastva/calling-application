@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Signup</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+</head>
+
+<body style="
+  margin:0;
+  height:100vh;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  background:linear-gradient(135deg,#0f172a,#1e293b);
+  font-family:Inter, sans-serif;
+">
+
+<div style="
+  width:100%;
+  max-width:400px;
+  background:#111827;
+  padding:40px 30px;
+  border-radius:18px;
+  box-shadow:0 20px 60px rgba(0,0,0,0.5);
+">
+
+  <h2 style="
+    text-align:center;
+    margin-bottom:25px;
+    color:#f1f5f9;
+    font-weight:600;
+  ">Create Account</h2>
+
+  <form id="signupForm" style="display:flex; flex-direction:column; gap:15px;">
+
+    <input name="name" placeholder="Full Name" required
+      style="
+        padding:12px 14px;
+        border-radius:10px;
+        border:1px solid #334155;
+        background:#1f2937;
+        color:#f1f5f9;
+        outline:none;
+      "
+    >
+
+    <input name="email" type="email" placeholder="Email" required
+      style="
+        padding:12px 14px;
+        border-radius:10px;
+        border:1px solid #334155;
+        background:#1f2937;
+        color:#f1f5f9;
+        outline:none;
+      "
+    >
+
+    <input name="password" type="password" placeholder="Password" required
+      style="
+        padding:12px 14px;
+        border-radius:10px;
+        border:1px solid #334155;
+        background:#1f2937;
+        color:#f1f5f9;
+        outline:none;
+      "
+    >
+
+    <button type="submit"
+      style="
+        padding:12px;
+        border:none;
+        border-radius:30px;
+        background:#6366f1;
+        color:white;
+        font-weight:500;
+        cursor:pointer;
+        transition:0.3s;
+      "
+      onmouseover="this.style.background='#4f46e5'"
+      onmouseout="this.style.background='#6366f1'"
+    >
+      Signup
+    </button>
+
+  </form>
+
+  <p style="
+    margin-top:18px;
+    text-align:center;
+    font-size:14px;
+    color:#94a3b8;
+  ">
+    Already have account?
+    <a href="login.html" style="color:#6366f1; text-decoration:none;">
+      Login
+    </a>
+  </p>
+
+</div>
+
+<script src="app.js"></script>
+
+</body>
+</html>
