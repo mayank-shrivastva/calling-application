@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Video Call</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <style>
+    body {
+      margin: 0;
+      background: #111827;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    .phone-frame {
+      width: 100%;
+      max-width: 420px;
+      height: 95vh;
+      max-height: 820px;
+      aspect-ratio: 9 / 19.5;
+      background: #000;
+      border-radius: 40px;
+      overflow: hidden;
+      position: relative;
+      box-shadow: 0 25px 70px rgba(0,0,0,0.6);
+    }
+
+    @media (max-width: 500px) {
+      body { background: #000; }
+      .phone-frame {
+        width: 100vw;
+        height: 100vh;
+        border-radius: 0;
+        box-shadow: none;
+      }
+    }
+
+    #remoteVideo {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    #localVideo {
+      position: absolute;
+      bottom: 100px;
+      right: 15px;
+      width: 80px;
+      height: 125px;
+      border-radius: 16px;
+      object-fit: cover;
+      border: 2px solid rgba(255,255,255,0.3);
+    }
+
+    .top-bar {
+      position: absolute;
+      top: 0;
+      width: 100%;
+      padding: 22px 0 10px 0;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.75), transparent);
+      color: white;
+      display: flex;
+      justify-content: center;
+      font-size: 15px;
+      font-weight: 500;
+      letter-spacing: 0.5px;
+    }
+
+    .controls {
+      position: absolute;
+      bottom: 30px;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+    }
+
+    .control-bar {
+      background: rgba(0,0,0,0.55);
+      backdrop-filter: blur(12px);
+      padding: 12px 20px;
+      border-radius: 35px;
+      display: flex;
+      gap: 18px;
+    }
+
+    .btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: 0.2s ease;
+}
+
+    .btn-dark {
+      background: #1f2937;
+      color: white;
+    }
+
+    .btn-dark.active {
+      background: #374151;
+    }
+
+    .btn-end {
+      background: #ef4444;
+      color: white;
+    }
+
+    .btn:hover {
+      transform: scale(1.08);
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="phone-frame">
+
+  <video id="remoteVideo" autoplay playsinline></video>
+  <video id="localVideo" autoplay playsinline muted></video>
+
+  <div class="top-bar">
+    <div id="callStatus">Connecting...</div>
+  </div>
+
+  <div class="controls">
+    <div class="control-bar">
+      <button id="muteBtn" class="btn btn-dark" onclick="toggleMute()">
+  <svg viewBox="0 0 24 24" width="22" height="22" fill="white">
+    <path d="M12 14a3 3 0 003-3V5a3 3 0 10-6 0v6a3 3 0 003 3zm5-3a5 5 0 01-10 0H5a7 7 0 0014 0h-2zm-5 9a7 7 0 007-7h-2a5 5 0 01-10 0H5a7 7 0 007 7z"/>
+  </svg>
+</button>
+
+<button class="btn btn-end" onclick="endCall()">
+  <svg viewBox="0 0 24 24" width="22" height="22" fill="white">
+    <path d="M12 9c-2.21 0-4.21.9-5.66 2.34l-2.12-2.12A11.93 11.93 0 0112 6c3.31 0 6.31 1.34 8.49 3.51l-2.12 2.12C16.21 9.9 14.21 9 12 9z"/>
+  </svg>
+</button>
+
+<button class="btn btn-dark" onclick="flipCamera()">
+  <svg viewBox="0 0 24 24" width="22" height="22" fill="white">
+    <path d="M20 5h-3.17l-1.84-2H9L7.17 5H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V7a2 2 0 00-2-2zm-8 13a5 5 0 115-5 5 5 0 01-5 5zm0-8a3 3 0 103 3 3 3 0 00-3-3z"/>
+  </svg>
+</button>
+    </div>
+  </div>
+
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+
+<script>
+const socket = io();
+let peerConnection;
+let localStream;
+let receiverId;
+let usingFrontCamera = true;
+let callTimer;
+let seconds = 0;
+
+const config = {
+  iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+};
+
+function getReceiverIdFromURL() {
+  const parts = window.location.pathname.split("/");
+  return parts[parts.length - 1];
+}
+
+function setStatus(text) {
+  document.getElementById("callStatus").innerText = text;
+}
+
+function startTimer() {
+  callTimer = setInterval(() => {
+    seconds++;
+    const mins = String(Math.floor(seconds / 60)).padStart(2, "0");
+    const secs = String(seconds % 60).padStart(2, "0");
+    setStatus(`${mins}:${secs}`);
+  }, 1000);
+}
+
+async function startCall() {
+
+  setStatus("Connecting...");
+
+  peerConnection = new RTCPeerConnection(config);
+
+  localStream = await navigator.mediaDevices.getUserMedia({
+    video: { facingMode: "user" },
+    audio: true
+  });
+
+  document.getElementById("localVideo").srcObject = localStream;
+
+  localStream.getTracks().forEach(track => {
+    peerConnection.addTrack(track, localStream);
+  });
+
+  peerConnection.ontrack = (event) => {
+    document.getElementById("remoteVideo").srcObject = event.streams[0];
+    startTimer();
+  };
+
+  peerConnection.onicecandidate = (event) => {
+    if (event.candidate) {
+      socket.emit("ice-candidate", {
+        to: receiverId,
+        candidate: event.candidate
+      });
+    }
+  };
+
+  const offer = await peerConnection.createOffer();
+  await peerConnection.setLocalDescription(offer);
+
+  socket.emit("call-user", {
+    to: receiverId,
+    offer
+  });
+
+  setStatus("Ringing...");
+}
+
+/* ================= SOCKET EVENTS ================= */
+
+socket.on("call-answered", async ({ answer }) => {
+  await peerConnection.setRemoteDescription(
+    new RTCSessionDescription(answer)
+  );
+});
+
+socket.on("call-ended", () => {
+  setStatus("Call Ended");
+  setTimeout(() => {
+    cleanup();
+    window.location.href = "/dashboard";
+  }, 1500);
+});
+
+socket.on("ice-candidate", async ({ candidate }) => {
+  if (peerConnection) {
+    await peerConnection.addIceCandidate(
+      new RTCIceCandidate(candidate)
+    );
+  }
+});
+
+/* ================= CONTROLS ================= */
+
+function toggleMute() {
+  const audioTrack = localStream.getAudioTracks()[0];
+  if (!audioTrack) return;
+
+  audioTrack.enabled = !audioTrack.enabled;
+
+  const btn = document.getElementById("muteBtn");
+  btn.classList.toggle("active");
+}
+
+async function flipCamera() {
+
+  usingFrontCamera = !usingFrontCamera;
+
+  const newStream = await navigator.mediaDevices.getUserMedia({
+    video: { facingMode: usingFrontCamera ? "user" : "environment" },
+    audio: true
+  });
+
+  const newVideoTrack = newStream.getVideoTracks()[0];
+
+  const sender = peerConnection.getSenders()
+    .find(s => s.track.kind === "video");
+
+  if (sender) {
+    sender.replaceTrack(newVideoTrack);
+  }
+
+  // Stop old tracks properly
+  localStream.getTracks().forEach(track => track.stop());
+
+  localStream = newStream;
+  document.getElementById("localVideo").srcObject = newStream;
+}
+
+function endCall() {
+
+  socket.emit("end-call", { to: receiverId });
+
+  cleanup();
+
+  window.location.href = "/dashboard";
+}
+
+function cleanup() {
+  clearInterval(callTimer);
+
+  if (localStream) {
+    localStream.getTracks().forEach(track => track.stop());
+  }
+
+  if (peerConnection) {
+    peerConnection.close();
+  }
+}
+
+window.onload = () => {
+  receiverId = getReceiverIdFromURL();
+  if (!receiverId) {
+    alert("Invalid Call Link");
+    return;
+  }
+  startCall();
+};
+</script>
+
+</body>
+</html>

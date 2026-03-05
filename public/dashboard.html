@@ -2,130 +2,286 @@
 <html>
 <head>
   <title>Receiver Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
 
 <div class="layout">
 
-  <!-- Sidebar -->
   <aside class="sidebar">
-    <h2 class="logo">CallApp</h2>
 
-    <ul class="menu">
-      <li class="active">Dashboard</li>
-      <li>Call History</li>
-      <li>Profile</li>
-      <li>Logout</li>
-    </ul>
-  </aside>
+  <h2 class="logo">CallApp</h2>
 
-  <!-- Main -->
+  <ul class="menu">
+    <li class="active">
+      <span>🏠</span> Dashboard
+    </li>
+
+    <li>
+      <span>📞</span> Incoming Calls
+      
+    </li>
+
+    <li>
+      <span>🕒</span> Call History
+    </li>
+
+    <li>
+      <span>👥</span> Contacts
+    </li>
+
+    <li>
+      <span>⚙️</span> Settings
+    </li>
+
+    <li>
+      <span>🔔</span> Notifications
+    </li>
+  </ul>
+
+  <div class="sidebar-bottom">
+    <button class="logout-btn" onclick="logout()">Logout</button>
+  </div>
+
+</aside>
+
   <main class="main">
 
-    <!-- Topbar -->
     <div class="topbar">
-      <h1>Receiver Panel</h1>
-      <div class="user-box">
-        <span class="status-dot"></span>
-        Online
+<h1 style="font-size:20px; font-weight:600;">
+  Welcome Back  👋
+</h1>      <div class="user-box">
+        <span id="statusDot" class="status-dot online"></span>
+        <span id="statusText">Online</span>
       </div>
     </div>
 
-    <!-- Hero Waiting Section -->
-    <div class="hero waiting-hero">
-      <div class="hero-content">
-        <h2>Waiting For Incoming Call...</h2>
-        <p>Your system is ready to receive calls.</p>
+    <div class="profile-card">
+      <div class="profile-left">
+        <div class="profile-header">
+          <div class="profile-avatar">M</div>
+          <div>
+            <h3>Mayank Kumar</h3>
+            <p class="profile-id">
+              Receiver ID: <span id="receiverIdText"></span>
+            </p>
+          </div>
+        </div>
+
+        <div class="profile-actions">
+          <button class="primary-btn" onclick="toggleQR()">Show QR Code</button>
+          <button class="secondary-btn" onclick="copyCallLink()">Copy Call Link</button>
+        </div>
+      </div>
+
+      <div id="qrBox" class="qr-box">
+        <img id="qrImage" src="">
+        <p id="callLinkText"></p>
       </div>
     </div>
 
-    <!-- Stats -->
-    <div class="stats">
-      <div class="stat-card">
-        <h3>18</h3>
-        <p>Total Received Calls</p>
-      </div>
-      <div class="stat-card">
-        <h3>2</h3>
-        <p>Missed Calls</p>
-      </div>
-      <div class="stat-card">
-        <h3>2h 05m</h3>
-        <p>Total Talk Time</p>
-      </div>
-    </div>
-
-    <!-- Recent Calls -->
-    <div class="recent">
-      <h2>Recent Calls</h2>
-
-      <table>
-        <thead>
-          <tr>
-            <th>Caller</th>
-            <th>Status</th>
-            <th>Duration</th>
-            <th>Date</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>Unknown User</td>
-            <td class="success">Completed</td>
-            <td>12m</td>
-            <td>Today</td>
-          </tr>
-          <tr>
-            <td>Guest Caller</td>
-            <td class="danger">Missed</td>
-            <td>-</td>
-            <td>Yesterday</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+    
 
   </main>
-
 </div>
 
-<!-- Incoming Call Modal -->
+<!-- Incoming Call Alert -->
 <div id="incomingAlert" class="call-alert">
   <div class="call-alert-box">
     <div class="alert-header">
       <span class="ring-dot"></span>
-      <strong>Incoming Call</strong>
     </div>
     <p id="callerName">Someone is calling...</p>
-
     <div class="alert-actions">
       <button class="accept-btn" onclick="acceptCall()">Accept</button>
       <button class="reject-btn" onclick="rejectCall()">Reject</button>
     </div>
   </div>
 </div>
+
+<!-- ACTIVE CALL SCREEN -->
+<div id="activeCallScreen" class="call-screen">
+
+  <div class="phone-frame">
+
+    <video id="remoteVideo" autoplay playsinline></video>
+    <video id="localVideo" autoplay playsinline muted></video>
+
+    <div class="top-bar">
+      <div id="callTimer">00:00</div>
+    </div>
+
+    <div class="controls">
+      <div class="control-bar">
+       <button id="muteBtn" class="btn btn-dark" onclick="toggleMute()">
+  <svg viewBox="0 0 24 24" width="22" height="22" fill="white">
+    <path d="M12 14a3 3 0 003-3V5a3 3 0 10-6 0v6a3 3 0 003 3zm5-3a5 5 0 01-10 0H5a7 7 0 0014 0h-2zm-5 9a7 7 0 007-7h-2a5 5 0 01-10 0H5a7 7 0 007 7z"/>
+  </svg>
+</button>
+
+<button class="btn btn-end" onclick="endCall()">
+  <svg viewBox="0 0 24 24" width="22" height="22" fill="white">
+    <path d="M12 9c-2.21 0-4.21.9-5.66 2.34l-2.12-2.12A11.93 11.93 0 0112 6c3.31 0 6.31 1.34 8.49 3.51l-2.12 2.12C16.21 9.9 14.21 9 12 9z"/>
+  </svg>
+</button>
+
+<button class="btn btn-dark" onclick="flipCamera()">
+  <svg viewBox="0 0 24 24" width="22" height="22" fill="white">
+    <path d="M20 5h-3.17l-1.84-2H9L7.17 5H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V7a2 2 0 00-2-2zm-8 13a5 5 0 115-5 5 5 0 01-5 5zm0-8a3 3 0 103 3 3 3 0 00-3-3z"/>
+  </svg>
+</button>
+      </div>
+    </div>
+
+  </div>
 </div>
+
+<script src="/socket.io/socket.io.js"></script>
+
 <script>
-  let callReminderInterval = null;
 
-function showIncomingCall(name = "Unknown Caller") {
-  document.getElementById("callerName").innerText =
-    name + " is calling...";
+/* PROFILE + QR */
 
-  const alertBox = document.getElementById("incomingAlert");
-  alertBox.style.display = "block";
+const token = localStorage.getItem("token");
 
-  // Reminder animation every 3 seconds
-  callReminderInterval = setInterval(() => {
-    alertBox.style.animation = "none";
-    void alertBox.offsetWidth; // restart animation
-    alertBox.style.animation = "slideIn 0.4s ease";
-  }, 3000);
+if (!token) {
+  window.location.href = "login.html";
 }
 
-function acceptCall() {
-  stopCallAlert();
+const payload = JSON.parse(atob(token.split(".")[1]));
+
+// Agar backend me tumne JWT me id bheja hai
+const receiverId = payload.id;  
+document.getElementById("receiverIdText").innerText = receiverId;
+
+// Agar name bheja hai to:
+/// const receiverId = payload.name;
+
+const baseURL = window.location.origin;
+const callLink = baseURL + "/call/" + receiverId;
+
+document.getElementById("callLinkText").innerText = callLink;
+document.getElementById("qrImage").src =
+  "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" +
+  encodeURIComponent(callLink);
+
+function toggleQR() {
+  const box = document.getElementById("qrBox");
+  box.style.display = box.style.display === "block" ? "none" : "block";
+}
+
+function copyCallLink() {
+  navigator.clipboard.writeText(callLink);
+  alert("Call link copied!");
+}
+
+/* SOCKET + WEBRTC */
+
+const socket = io();
+socket.emit("register", receiverId);
+
+let peerConnection;
+let localStream;
+
+const config = {
+  iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+};
+
+socket.on("incoming-call", async ({ offer, from }) => {
+
+  showIncomingCall("Incoming User");
+
+  window.acceptCall = async function () {
+
+    stopCallAlert();
+    setStatus("busy");
+
+    document.getElementById("activeCallScreen").style.display = "block";
+
+    peerConnection = new RTCPeerConnection(config);
+
+    // Show caller video
+    peerConnection.ontrack = (event) => {
+      document.getElementById("remoteVideo").srcObject = event.streams[0];
+    };
+
+    peerConnection.onicecandidate = (event) => {
+      if (event.candidate) {
+        socket.emit("ice-candidate", {
+          to: from,
+          candidate: event.candidate
+        });
+      }
+    };
+
+    // Receiver camera
+    localStream = await navigator.mediaDevices.getUserMedia({
+      video: true,
+      audio: true
+    });
+
+    document.getElementById("localVideo").srcObject = localStream;
+
+    localStream.getTracks().forEach(track => {
+      peerConnection.addTrack(track, localStream);
+    });
+
+    await peerConnection.setRemoteDescription(
+      new RTCSessionDescription(offer)
+    );
+
+    const answer = await peerConnection.createAnswer();
+    await peerConnection.setLocalDescription(answer);
+
+    socket.emit("answer-call", { to: from, answer });
+  };
+});
+
+socket.on("ice-candidate", async ({ candidate }) => {
+  if (peerConnection) {
+    await peerConnection.addIceCandidate(
+      new RTCIceCandidate(candidate)
+    );
+  }
+});
+
+/* END CALL */
+
+function endCall() {
+  if (peerConnection) {
+    peerConnection.close();
+    peerConnection = null;
+  }
+
+  if (localStream) {
+    localStream.getTracks().forEach(track => track.stop());
+  }
+
+  document.getElementById("activeCallScreen").style.display = "none";
+  setStatus("online");
+}
+
+/* UI */
+
+function setStatus(type) {
+  const dot = document.getElementById("statusDot");
+  const text = document.getElementById("statusText");
+
+  dot.className = "status-dot " + type;
+
+  if(type === "online") text.innerText = "Online";
+  if(type === "ringing") text.innerText = "Incoming Call...";
+  if(type === "busy") text.innerText = "On Call";
+}
+
+function showIncomingCall(name) {
+  document.getElementById("callerName").innerText =
+     "Guest Caller is calling...";
+
+  document.getElementById("incomingAlert").style.display = "block";
+  setStatus("ringing");
 }
 
 function rejectCall() {
@@ -134,12 +290,15 @@ function rejectCall() {
 
 function stopCallAlert() {
   document.getElementById("incomingAlert").style.display = "none";
-
-  if (callReminderInterval) {
-    clearInterval(callReminderInterval);
-    callReminderInterval = null;
-  }
+  setStatus("online");
 }
+
+function logout() {
+  localStorage.removeItem("token");
+  window.location.href = "login.html";
+}
+
 </script>
+
 </body>
 </html>
